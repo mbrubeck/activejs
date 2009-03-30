@@ -88,13 +88,16 @@ ActiveSupport = {
     {
         if(typeof(Jaxer) !== 'undefined')
         {
+            if (typeof Jaxer.console !== 'undefined') {
+                console.log.apply(console, arguments || []);
+            }
             Jaxer.Log.info.apply(Jaxer.Log,arguments || []);
         }
-        else if(typeof(air) !== 'undefined')
+        if(typeof(air) !== 'undefined')
         {
             air.Introspector.Console.log.apply(air.Introspector.Console,arguments || []);
         }
-        else if(typeof(console) !== 'undefined')
+        if(typeof(console) !== 'undefined')
         {
             console.log.apply(console,arguments || []);
         }
@@ -355,6 +358,17 @@ ActiveSupport = {
         }
     },
     /**
+     * Trim leading and trailing whitespace.
+     * @alias ActiveSupport.trim
+     * @param {String} str
+     * @return {String}
+     */
+    trim: function(str)
+    {
+        return (str || "").replace(/^\s+|\s+$/g,"");
+    },
+
+    /**
      * Emulates Prototype's Object.extend
      * @alias ActiveSupport.extend
      * @param {Object} destination
@@ -520,7 +534,7 @@ ActiveSupport = {
             ]
         },
         /**
-         * Generates an orginalized version of a number as a string (9th, 2nd, etc)
+         * Generates an ordinalized version of a number as a string (9th, 2nd, etc)
          * @alias ActiveSupport.Inflector.ordinalize
          * @param {Number} number
          * @return {String}
@@ -550,11 +564,11 @@ ActiveSupport = {
          */
         pluralize: function pluralize(word)
         {
-            var i;
+            var i, lc = word.toLowerCase();
             for (i = 0; i < ActiveSupport.Inflector.Inflections.uncountable.length; i++)
             {
                 var uncountable = ActiveSupport.Inflector.Inflections.uncountable[i];
-                if (word.toLowerCase === uncountable)
+                if (lc === uncountable)
                 {
                     return uncountable;
                 }
@@ -563,7 +577,7 @@ ActiveSupport = {
             {
                 var singular = ActiveSupport.Inflector.Inflections.irregular[i][0];
                 var plural = ActiveSupport.Inflector.Inflections.irregular[i][1];
-                if ((word.toLowerCase === singular) || (word === plural))
+                if ((lc === singular) || (lc === plural))
                 {
                     return plural;
                 }
@@ -585,11 +599,11 @@ ActiveSupport = {
          * @return {String}
          */
         singularize: function singularize(word) {
-            var i;
+            var i, lc = word.toLowerCase();
             for (i = 0; i < ActiveSupport.Inflector.Inflections.uncountable.length; i++)
             {
                 var uncountable = ActiveSupport.Inflector.Inflections.uncountable[i];
-                if (word.toLowerCase === uncountable)
+                if (lc === uncountable)
                 {
                     return uncountable;
                 }
@@ -598,9 +612,9 @@ ActiveSupport = {
             {
                 var singular = ActiveSupport.Inflector.Inflections.irregular[i][0];
                 var plural   = ActiveSupport.Inflector.Inflections.irregular[i][1];
-                if ((word.toLowerCase === singular) || (word === plural))
+                if ((lc === singular) || (lc === plural))
                 {
-                    return plural;
+                    return singular;
                 }
             }
             for (i = 0; i < ActiveSupport.Inflector.Inflections.singular.length; i++)
@@ -612,6 +626,7 @@ ActiveSupport = {
                     return word.replace(regex, replace_string);
                 }
             }
+            return word;
         }
     },
     /**

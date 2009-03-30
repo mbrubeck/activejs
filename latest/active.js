@@ -88,13 +88,16 @@ ActiveSupport = {
     {
         if(typeof(Jaxer) !== 'undefined')
         {
+            if (typeof Jaxer.console !== 'undefined') {
+                console.log.apply(console, arguments || []);
+            }
             Jaxer.Log.info.apply(Jaxer.Log,arguments || []);
         }
-        else if(typeof(air) !== 'undefined')
+        if(typeof(air) !== 'undefined')
         {
             air.Introspector.Console.log.apply(air.Introspector.Console,arguments || []);
         }
-        else if(typeof(console) !== 'undefined')
+        if(typeof(console) !== 'undefined')
         {
             console.log.apply(console,arguments || []);
         }
@@ -355,6 +358,17 @@ ActiveSupport = {
         }
     },
     /**
+     * Trim leading and trailing whitespace.
+     * @alias ActiveSupport.trim
+     * @param {String} str
+     * @return {String}
+     */
+    trim: function(str)
+    {
+        return (str || "").replace(/^\s+|\s+$/g,"");
+    },
+
+    /**
      * Emulates Prototype's Object.extend
      * @alias ActiveSupport.extend
      * @param {Object} destination
@@ -520,7 +534,7 @@ ActiveSupport = {
             ]
         },
         /**
-         * Generates an orginalized version of a number as a string (9th, 2nd, etc)
+         * Generates an ordinalized version of a number as a string (9th, 2nd, etc)
          * @alias ActiveSupport.Inflector.ordinalize
          * @param {Number} number
          * @return {String}
@@ -550,11 +564,11 @@ ActiveSupport = {
          */
         pluralize: function pluralize(word)
         {
-            var i;
+            var i, lc = word.toLowerCase();
             for (i = 0; i < ActiveSupport.Inflector.Inflections.uncountable.length; i++)
             {
                 var uncountable = ActiveSupport.Inflector.Inflections.uncountable[i];
-                if (word.toLowerCase === uncountable)
+                if (lc === uncountable)
                 {
                     return uncountable;
                 }
@@ -563,7 +577,7 @@ ActiveSupport = {
             {
                 var singular = ActiveSupport.Inflector.Inflections.irregular[i][0];
                 var plural = ActiveSupport.Inflector.Inflections.irregular[i][1];
-                if ((word.toLowerCase === singular) || (word === plural))
+                if ((lc === singular) || (lc === plural))
                 {
                     return plural;
                 }
@@ -585,11 +599,11 @@ ActiveSupport = {
          * @return {String}
          */
         singularize: function singularize(word) {
-            var i;
+            var i, lc = word.toLowerCase();
             for (i = 0; i < ActiveSupport.Inflector.Inflections.uncountable.length; i++)
             {
                 var uncountable = ActiveSupport.Inflector.Inflections.uncountable[i];
-                if (word.toLowerCase === uncountable)
+                if (lc === uncountable)
                 {
                     return uncountable;
                 }
@@ -598,9 +612,9 @@ ActiveSupport = {
             {
                 var singular = ActiveSupport.Inflector.Inflections.irregular[i][0];
                 var plural   = ActiveSupport.Inflector.Inflections.irregular[i][1];
-                if ((word.toLowerCase === singular) || (word === plural))
+                if ((lc === singular) || (lc === plural))
                 {
-                    return plural;
+                    return singular;
                 }
             }
             for (i = 0; i < ActiveSupport.Inflector.Inflections.singular.length; i++)
@@ -612,6 +626,7 @@ ActiveSupport = {
                     return word.replace(regex, replace_string);
                 }
             }
+            return word;
         }
     },
     /**
@@ -1289,7 +1304,7 @@ ActiveSupport = {
  * --------------
  * If an object has an options property that contains a callable function with
  * the same name as an event triggered with <b>notify()</b>, it will be
- * treated just like an instance observer. So the falling code is equivalent.
+ * treated just like an instance observer. So the following code is equivalent:
  *
  *     var rating_one = new Control.Rating('rating_one',{  
  *         afterChange: function(new_value){}    
@@ -2849,27 +2864,21 @@ ActiveRecord = {
         //constructor
         model = ActiveRecord.Models[options.modelName] = function initialize(data)
         {
-            this.modelName = this.constructor.modelName;
-            this.tableName = this.constructor.tableName;
-            this.primaryKeyName = this.constructor.primaryKeyName;
             this._object = {};
             for(var key in data)
             {
-                //third param is to supress notifications on set
+                //third param is to suppress notifications on set
                 this.set(key,data[key],true);
             }
             this._errors = [];
-            for(var key in this.constructor.fields)
+            var fields = this.constructor.fields;
+            for(var key in fields)
             {
-                if(!this.constructor.fields[key].primaryKey)
+                var field = fields[key]
+                if(!field.primaryKey)
                 {
-                    var value = ActiveRecord.connection.fieldOut(this.constructor.fields[key],this.get(key));
-                    if(Migrations.objectIsFieldDefinition(value))
-                    {
-                        value = value.value;
-                    }
-                    //don't supress notifications on set since these are the processed values
-                    this.set(key,value);
+                    var value = ActiveRecord.connection.fieldOut(field,this.get(key));
+                    this.set(key,value,true);
                 }
             }
             //performance optimization if no observers
@@ -2878,6 +2887,11 @@ ActiveRecord = {
         model.modelName = options.modelName;
         model.tableName = options.tableName;
         model.primaryKeyName = 'id';
+        ActiveSupport.extend(model.prototype, {
+          modelName: model.modelName,
+          tableName: model.tableName,
+          primaryKeyName: model.primaryKeyName
+        });
         
         //mixin instance methods
         ActiveSupport.extend(model.prototype, ActiveRecord.InstanceMethods);
@@ -2885,7 +2899,7 @@ ActiveRecord = {
         //user defined take precedence
         if(methods && typeof(methods) !== 'function')
         {
-            ActiveSupport.extend(model.prototype, methods || {});
+            ActiveSupport.extend(model.prototype, methods);
         }
 
         //mixin class methods
@@ -2929,6 +2943,8 @@ ActiveRecord = {
             Finders.generateFindByField(model,key);
             Finders.generateFindAllByField(model,key);
         }
+        //get is a synonym for findBy<PrimaryKey>
+        model.get = model['findBy' + ActiveSupport.camelize(model.primaryKeyName, true)];
         
         //create table for model if autoMigrate enabled
         if(ActiveRecord.autoMigrate)
@@ -3057,17 +3073,17 @@ ActiveSupport.extend(ActiveRecord.InstanceMethods,{
      * @alias ActiveRecord.Instance.set
      * @param {String} key
      * @param {mixed} value
-     * @param {Boolean} surpress_notifications Defaults to false
+     * @param {Boolean} suppress_notifications Defaults to false
      * @return {mixed} the value that was set
      */
-    set: function set(key, value, surpress_notifications)
+    set: function set(key, value, suppress_notifications)
     {
         if (typeof(this[key]) !== "function")
         {
             this[key] = value;
         }
         this._object[key] = value;
-        if(!surpress_notifications)
+        if(!suppress_notifications)
         {
             this.notify('set',key,value);
         }
@@ -3154,7 +3170,7 @@ ActiveSupport.extend(ActiveRecord.InstanceMethods,{
         {
             return false;
         }
-        var record = this.constructor.find(this.get(this.constructor.primaryKeyName));
+        var record = this.constructor.get(this.get(this.constructor.primaryKeyName));
         if (!record)
         {
             return false;
@@ -3186,7 +3202,7 @@ ActiveSupport.extend(ActiveRecord.InstanceMethods,{
         {
             if(!this.constructor.fields[key].primaryKey)
             {
-                //third param is to surpress observers
+                //third param is to suppress observers
                 this.set(key,ActiveRecord.connection.fieldIn(this.constructor.fields[key],this.get(key)),true);
             }
         }
@@ -3226,7 +3242,7 @@ ActiveSupport.extend(ActiveRecord.InstanceMethods,{
         {
             if(!this.constructor.fields[key].primaryKey)
             {
-                //third param is to surpress observers
+                //third param is to suppress observers
                 this.set(key,ActiveRecord.connection.fieldOut(this.constructor.fields[key],this.get(key)),true);
             }
         }
@@ -3334,6 +3350,13 @@ ActiveSupport.extend(ActiveRecord.ClassMethods,{
      *         order: 'id DESC'
      *     });
      *     var users = User.find('SELECT * FROM users ORDER id DESC');
+     *
+     *     // If your primary key is not numeric, find(id) will not work.
+     *     // Use findBy<PrimaryKey>(id) or get(id) instead:
+     *
+     *     var commit = Commit.find('cxfeea6'); // BAD - Will be interpreted as a SQL statement.
+     *     commit = Commit.findById('cxfeea6'); // GOOD
+     *     commit = Commit.get('cxfeea6');      // GOOD
      */
     find: function find(params)
     {
@@ -3342,7 +3365,7 @@ ActiveSupport.extend(ActiveRecord.ClassMethods,{
         {
             params = {};
         }
-        if (params.first || ((typeof(params) === "number" || (typeof(params) === "string" && params.match(/^\d+$/))) && arguments.length == 1))
+        if ((params.first && typeof params.first === "boolean") || ((typeof(params) === "number" || (typeof(params) === "string" && params.match(/^\d+$/))) && arguments.length == 1))
         {
             if (params.first)
             {
@@ -3419,7 +3442,7 @@ ActiveSupport.extend(ActiveRecord.ClassMethods,{
         }
         else
         {
-            var instance = this.find(id);
+            var instance = this.get(id);
             if(!instance)
             {
                 return false;
@@ -3476,7 +3499,7 @@ ActiveSupport.extend(ActiveRecord.ClassMethods,{
     update: function update(id, attributes)
     {
         //array of ids and array of attributes passed in
-        if(typeof(id.length) !== 'undefined')
+        if (ActiveSupport.isArray(id))
         {
             var results = [];
             for(var i = 0; i < id.length; ++i)
@@ -3487,7 +3510,7 @@ ActiveSupport.extend(ActiveRecord.ClassMethods,{
         }
         else
         {
-            var record = this.find(id);
+            var record = this.get(id);
             if(!record)
             {
                 return false;
@@ -3813,7 +3836,7 @@ Adapters.InstanceMethods = {
     },
     getColumnDefinitionFragmentFromKeyAndColumns: function getColumnDefinitionFragmentFromKeyAndColumns(key,columns)
     {
-        return key + ' ' + ((typeof(columns[key]) === 'object' && typeof(columns[key].type) !== 'undefined') ? columns[key].type : this.getDefaultColumnDefinitionFragmentFromValue(columns[key]));
+        return this.quoteIdentifier(key) + ((typeof(columns[key]) === 'object' && typeof(columns[key].type) !== 'undefined') ? columns[key].type : this.getDefaultColumnDefinitionFragmentFromValue(columns[key]));
     },
     getDefaultColumnDefinitionFragmentFromValue: function getDefaultColumnDefinitionFragmentFromValue(value)
     {
@@ -3834,6 +3857,10 @@ Adapters.InstanceMethods = {
     getDefaultValueFromFieldDefinition: function getDefaultValueFromFieldDefinition(field)
     {
         return field.value ? field.value : Migrations.fieldTypesWithDefaultValues[field.type ? field.type.replace(/\(.*/g,'').toLowerCase() : ''];
+    },
+    quoteIdentifier: function quoteIdentifier(name)
+    {
+      return '"' + name + '"';
     },
     log: function log()
     {
@@ -3863,7 +3890,7 @@ Adapters.SQL = {
             args.push(data[keys[i]]);
             values.push('?');
         }
-        args.unshift("INSERT INTO " + table + " (" + keys.join(',') + ") VALUES (" + values.join(',') + ")");
+        args.unshift("INSERT INTO " + table + " (" + keys.map(this.quoteIdentifier).join(',') + ") VALUES (" + values.join(',') + ")");
         var response = this.executeSQL.apply(this,args);
         var id = data[primary_key_name] || this.getLastInsertedRowId();
         var data_with_id = ActiveSupport.clone(data);
@@ -3881,7 +3908,7 @@ Adapters.SQL = {
             for (var i = 0; i < keys.length; ++i)
             {
                 args.push(updates[keys[i]]);
-                values.push(updates[i] + " = ?");
+                values.push(this.quoteIdentifier(keys[i]) + " = ?");
             }
             updates = values.join(',');
         }
@@ -3896,10 +3923,10 @@ Adapters.SQL = {
         for (var i = 0; i < keys.length; ++i)
         {
             args.push(data[keys[i]]);
-            values.push(keys[i] + " = ?");
+            values.push(this.quoteIdentifier(keys[i]) + " = ?");
         }
         args.push(id);
-        args.unshift("UPDATE " + table + " SET " + values.join(',') + " WHERE " + primary_key_name + " = ?");
+        args.unshift("UPDATE " + table + " SET " + values.join(',') + " WHERE " + this.quoteIdentifier(primary_key_name) + " = ?");
         var response = this.executeSQL.apply(this, args);
         this.notify('updated',table,id,data);
         return response;
@@ -3924,7 +3951,7 @@ Adapters.SQL = {
         {
             args = ["DELETE FROM " + table];
             var ids = [];
-            var ids_result_set = this.executeSQL('SELECT ' + primary_key_name + ' FROM ' + table);
+            var ids_result_set = this.executeSQL('SELECT ' + this.quoteIdentifier(primary_key_name) + ' FROM ' + table);
             if(!ids_result_set)
             {
                 return null;
@@ -3941,7 +3968,7 @@ Adapters.SQL = {
         }
         else
         {
-            args = ["DELETE FROM " + table + " WHERE " + primary_key_name + " = ?",id];
+            args = ["DELETE FROM " + table + " WHERE " + this.quoteIdentifier(primary_key_name) + " = ?",id];
             response = this.executeSQL.apply(this,args);
             this.notify('destroyed',table,id);
             return response;
@@ -3949,7 +3976,7 @@ Adapters.SQL = {
     },
     findEntitiesById: function findEntityById(table, primary_key_name, ids)
     {
-        var response = this.executeSQL.apply(this,['SELECT * FROM ' + table + ' WHERE ' + primary_key_name + ' IN (' + ids.join(',') + ')']);
+        var response = this.executeSQL.apply(this,['SELECT * FROM ' + table + ' WHERE ' + this.quoteIdentifier(primary_key_name) + ' IN (' + ids.join(',') + ')']);
         if (!response)
         {
             return false;
@@ -4010,7 +4037,7 @@ Adapters.SQL = {
             keys = ActiveSupport.keys(fragment);
             for(i = 0; i < keys.length; ++i)
             {
-                where += keys[i] + " = ? AND ";
+                where += this.quoteIdentifier(keys[i]) + " = ? AND ";
                 var value;
                 if(typeof(fragment[keys[i]]) === 'number')
                 {
@@ -4093,7 +4120,7 @@ Adapters.SQL = {
         if(Migrations.objectIsFieldDefinition(field))
         {
             //date handling
-            if(field.type.toLowerCase().match(/date/) && typeof(value) == 'string')
+            if(typeof(value) == 'string' && /date/.test(field.type.toLowerCase()))
             {
                 return ActiveSupport.dateFromDateTime(value);
             }
@@ -4114,11 +4141,12 @@ Adapters.SQL = {
         }
         if (typeof(field) === 'number')
         {
-            var trim = function(str)
+            if (typeof(value) === 'number')
             {
-                return (new String(str)).toString().replace(/^\s+|\s+$/g,"");
-            };
-            return (trim(value).length > 0 && !(/[^0-9.]/).test(trim(value)) && (/\.\d/).test(trim(value))) ? parseFloat(new Number(value)) : parseInt(new Number(value), 10);
+                return value;
+            }
+            var t = ActiveSupport.trim(value);
+            return (t.length > 0 && !(/[^0-9.]/).test(t) && (/\.\d/).test(t)) ? parseFloat(new Number(value)) : parseInt(new Number(value), 10);
         }
         //array or object (can come from DB (as string) or coding enviornment (object))
         if ((typeof(value) === 'string' || typeof(value) === 'object') && (typeof(field) === 'object' && (typeof(field.length) !== 'undefined' || typeof(field.type) === 'undefined')))
@@ -4160,7 +4188,7 @@ Adapters.SQLite = ActiveSupport.extend(ActiveSupport.clone(Adapters.SQL),{
             if(columns[key].primaryKey)
             {
                 var type = columns[key].type || 'INTEGER';
-                fragments.unshift(key + ' ' + type + ' PRIMARY KEY');
+                fragments.unshift(this.quoteIdentifier(key) + ' ' + type + ' PRIMARY KEY');
             }
             else
             {
@@ -5915,7 +5943,7 @@ var Migrations = {
         'bitint': 0,
         'float': 0,
         'double': 0,
-        'bouble precision': 0,
+        'double precision': 0,
         'real': 0,
         'decimal': 0,
         'numeric': 0,
@@ -6521,12 +6549,17 @@ ActiveRecord.Adapters.Gears = function Gears(db){
                 rows: []
             };
             var count = result.fieldCount();
+            var fieldNames = [];
+            for(var i = 0; i < count; ++i)
+            {
+                fieldNames[i] = result.fieldName(i);
+            }
             while(result.isValidRow())
             {
                 var row = {};
                 for(var i = 0; i < count; ++i)
                 {
-                    row[result.fieldName(i)] = result.field(i);
+                    row[fieldNames[i]] = result.field(i);
                 }
                 response.rows.push(row);
                 result.next();
@@ -6607,7 +6640,7 @@ ActiveRecord.Adapters.Gears.connect = function connect(name, version, display_na
     }
 
     db = google.gears.factory.create('beta.database');
-    db.open(name || 'ActiveRecord');
+    db.open(typeof name == 'undefined' ? 'ActiveRecord' : name);
         
     return new ActiveRecord.Adapters.Gears(db);
 };
