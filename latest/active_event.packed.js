@@ -11,6 +11,7 @@ if(typeof exports != "undefined"){
 }
 
 (function(global_context){
+
 ActiveSupport = {
     /**
      * Returns the global context object (window in most implementations).
@@ -181,7 +182,8 @@ ActiveSupport = {
      * @param {mixed} item to remove
      * @return {Array}
      */
-    without: function without(arr){
+    without: function without(arr)
+    {
         var values = ActiveSupport.arrayFrom(arguments).slice(1);
         var response = [];
         for(var i = 0 ; i < arr.length; i++)
@@ -296,7 +298,8 @@ ActiveSupport = {
      * @param {Boolean} [capitalize]
      * @return {String}
      */
-    camelize: function camelize(str, capitalize){
+    camelize: function camelize(str, capitalize)
+    {
         var camelized,
             parts = str.replace(/\_/g,'-').split('-'), len = parts.length;
         if (len === 1)
@@ -504,6 +507,7 @@ ActiveSupport = {
                 "money",
                 "rice",
                 "information",
+				"info",
                 "equipment"
             ]
         },
@@ -565,6 +569,7 @@ ActiveSupport = {
                     return word.replace(regex, replace_string);
                 }
             }
+						return word;
         },
         /**
          * Generates a singular version of an english word.
@@ -572,7 +577,8 @@ ActiveSupport = {
          * @param {String} word
          * @return {String}
          */
-        singularize: function singularize(word) {
+        singularize: function singularize(word)
+        {
             var i, lc = word.toLowerCase();
             for (i = 0; i < ActiveSupport.Inflector.Inflections.uncountable.length; i++)
             {
@@ -794,7 +800,7 @@ ActiveSupport = {
             var response = '';
             if(typeof(value) === 'string' || typeof(value) === 'number' || typeof(value) === 'boolean')
             {
-                response = '<![CDATA[' + (new String(value)).toString() + ']]>';
+                response = '<![CDATA[' + String(value) + ']]>';
             }
             else if(typeof(value) === 'object')
             {
@@ -1179,8 +1185,8 @@ ActiveSupport = {
  * @namespace {ActiveEvent}
  * @example
  * 
- * ActiveEvent.js
- * ==============
+ * ActiveEvent
+ * ===========
  * 
  * ActiveEvent allows you to create observable events, and attach event
  * handlers to any class or object.
@@ -1506,7 +1512,7 @@ ActiveEvent.extend = function extend(object){
         object.prototype.stopObserving = object.stopObserving;
         object.prototype.observeOnce = object.observeOnce;
         
-        object.prototype.notify = function notify(event_name)
+        object.prototype.notify = function notify_instance(event_name)
         {
             if(
               (!object._observers || !object._observers[event_name] || (object._observers[event_name] && object._observers[event_name].length == 0)) &&

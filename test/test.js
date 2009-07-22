@@ -719,13 +719,21 @@ ActiveTest.Tests.ActiveRecord.id = function(proceed)
             assert(Custom.find(a.custom_id).name == 'test', 'Custom integer primary key.');
 
             var b = Guid.create({guid: '123', data: 'test'});
+            assert(Guid.primaryKeyName == 'guid', 'model.primaryKeyName');
+            assert(b.primaryKeyName == 'guid', 'record.primaryKeyName');
             assert(Guid.findByGuid('123').data == 'test', 'findByGuid');
             assert(Guid.get('123').data == 'test', 'get(guid)');
 
             Guid.update('123', {data: 'changed'});
             assert(b.reload() && b.data == 'changed', 'Guid.update && b.reload');
 
-            assert(Guid.destroy('123') && Guid.count() == 0, 'Guid.destroy');
+            b.set('guid', 'abc');
+            assert(b.guid == 'abc', 'guid change');
+            b.save();
+            assert(!Guid.get('123'), 'old guid is gone');
+            assert(Guid.get('abc').data == 'changed', 'new guid is saved');
+
+            assert(Guid.destroy('abc') && Guid.count() == 0, 'Guid.destroy');
 
             if(proceed)
                 proceed();
@@ -1831,7 +1839,7 @@ ActiveTest.Tests.View.template = function(proceed)
 {
     with(ActiveTest)
     {
-        var simple_template = ActiveView.Template.create('<b><%= test %></b>');
+        var simple_template = new ActiveView.Template('<b><%= test %></b>');
         var output_a = simple_template.render({
             test: 'a'
         });
@@ -1840,7 +1848,7 @@ ActiveTest.Tests.View.template = function(proceed)
             test: 'b'
         });
         assert(output_b == '<b>b</b>','Render output is not cached.');
-        var loop_template = ActiveView.Template.create('<% for(var i = 0; i < list.length; ++i){ %><%= list[i] %><% } %>');
+        var loop_template = new ActiveView.Template('<% for(var i = 0; i < list.length; ++i){ %><%= list[i] %><% } %>');
         var loop_output = loop_template.render({list:['a','b','c']});
         assert(loop_output == 'abc','Loop functions correctly.');
     }

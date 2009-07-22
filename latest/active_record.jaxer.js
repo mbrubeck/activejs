@@ -37,6 +37,7 @@ if(typeof exports != "undefined"){
 }
 
 (function(global_context){
+
 ActiveSupport = {
     /**
      * Returns the global context object (window in most implementations).
@@ -207,7 +208,8 @@ ActiveSupport = {
      * @param {mixed} item to remove
      * @return {Array}
      */
-    without: function without(arr){
+    without: function without(arr)
+    {
         var values = ActiveSupport.arrayFrom(arguments).slice(1);
         var response = [];
         for(var i = 0 ; i < arr.length; i++)
@@ -322,7 +324,8 @@ ActiveSupport = {
      * @param {Boolean} [capitalize]
      * @return {String}
      */
-    camelize: function camelize(str, capitalize){
+    camelize: function camelize(str, capitalize)
+    {
         var camelized,
             parts = str.replace(/\_/g,'-').split('-'), len = parts.length;
         if (len === 1)
@@ -530,6 +533,7 @@ ActiveSupport = {
                 "money",
                 "rice",
                 "information",
+				"info",
                 "equipment"
             ]
         },
@@ -591,6 +595,7 @@ ActiveSupport = {
                     return word.replace(regex, replace_string);
                 }
             }
+						return word;
         },
         /**
          * Generates a singular version of an english word.
@@ -598,7 +603,8 @@ ActiveSupport = {
          * @param {String} word
          * @return {String}
          */
-        singularize: function singularize(word) {
+        singularize: function singularize(word)
+        {
             var i, lc = word.toLowerCase();
             for (i = 0; i < ActiveSupport.Inflector.Inflections.uncountable.length; i++)
             {
@@ -820,7 +826,7 @@ ActiveSupport = {
             var response = '';
             if(typeof(value) === 'string' || typeof(value) === 'number' || typeof(value) === 'boolean')
             {
-                response = '<![CDATA[' + (new String(value)).toString() + ']]>';
+                response = '<![CDATA[' + String(value) + ']]>';
             }
             else if(typeof(value) === 'object')
             {
@@ -1205,8 +1211,8 @@ ActiveSupport = {
  * @namespace {ActiveEvent}
  * @example
  * 
- * ActiveEvent.js
- * ==============
+ * ActiveEvent
+ * ===========
  * 
  * ActiveEvent allows you to create observable events, and attach event
  * handlers to any class or object.
@@ -1532,7 +1538,7 @@ ActiveEvent.extend = function extend(object){
         object.prototype.stopObserving = object.stopObserving;
         object.prototype.observeOnce = object.observeOnce;
         
-        object.prototype.notify = function notify(event_name)
+        object.prototype.notify = function notify_instance(event_name)
         {
             if(
               (!object._observers || !object._observers[event_name] || (object._observers[event_name] && object._observers[event_name].length == 0)) &&
@@ -1662,8 +1668,8 @@ if(typeof exports != "undefined"){
  * @namespace {ActiveRecord}
  * @example
  * 
- * ActiveRecord.js
- * ===============
+ * ActiveRecord
+ * ============
  * 
  * ActiveRecord.js is a cross browser, cross platform, stand-alone object
  * relational mapper. It shares a very similar vocabulary to the Ruby
@@ -1924,7 +1930,7 @@ if(typeof exports != "undefined"){
  *     
  * To observe a given event on all models, you can do the following: 
  * 
- *     ActiveRecord.observe('created',function(model_class,model_instance){});
+ *     ActiveRecord.observe('afterCreate',function(model_class,model_instance){});
  *     
  * afterFind works differently than all of the other events. It is only available
  * to the model class, not the instances, and is called only when a result set is
@@ -2125,22 +2131,31 @@ ActiveRecord = {
                     this.set(key,value,true);
                 }
             }
+            this._id = this.get(this.constructor.primaryKeyName);
             //performance optimization if no observers
             this.notify('afterInitialize', data);
         };
         model.modelName = options.modelName;
         model.tableName = options.tableName;
         model.primaryKeyName = 'id';
-        ActiveSupport.extend(model.prototype, {
-          modelName: model.modelName,
-          tableName: model.tableName,
-          primaryKeyName: model.primaryKeyName
-        });
         
         //mixin instance methods
         ActiveSupport.extend(model.prototype, ActiveRecord.InstanceMethods);
 
-        //user defined take precedence
+        //user defined methods take precedence
+				if(typeof(methods) == 'undefined')
+				{
+						//detect if the fields object is actually a methods object
+					  for(var method_name in fields)
+					  {
+						    if(typeof(fields[method_name]) == 'function')
+						    {
+							      methods = fields;
+							      fields = null; 
+						    }
+						    break;
+					  }
+				}
         if(methods && typeof(methods) !== 'function')
         {
             ActiveSupport.extend(model.prototype, methods);
@@ -2180,6 +2195,12 @@ ActiveRecord = {
         {
             model.primaryKeyName = custom_primary_key;
         }
+
+        ActiveSupport.extend(model.prototype, {
+          modelName: model.modelName,
+          tableName: model.tableName,
+          primaryKeyName: model.primaryKeyName
+        });
         
         //generate finders
         for(var key in model.fields)
@@ -2410,11 +2431,11 @@ ActiveSupport.extend(ActiveRecord.InstanceMethods,{
      */
     reload: function reload()
     {
-        if (!this.get(this.constructor.primaryKeyName))
+        if (this._id === undefined)
         {
             return false;
         }
-        var record = this.constructor.get(this.get(this.constructor.primaryKeyName));
+        var record = this.constructor.get(this._id);
         if (!record)
         {
             return false;
@@ -2458,7 +2479,7 @@ ActiveSupport.extend(ActiveRecord.InstanceMethods,{
         {
             this.set('updated',ActiveSupport.dateFormat('yyyy-mm-dd HH:MM:ss'));
         }
-        if (force_created_mode || !this.get(this.constructor.primaryKeyName))
+        if (force_created_mode || this._id === undefined)
         {
             if (this.notify('beforeCreate') === false)
             {
@@ -2468,9 +2489,8 @@ ActiveSupport.extend(ActiveRecord.InstanceMethods,{
             {
                 this.set('created',ActiveSupport.dateFormat('yyyy-mm-dd HH:MM:ss'));
             }
-            var id = this.get(this.constructor.primaryKeyName);
             ActiveRecord.connection.insertEntity(this.tableName, this.constructor.primaryKeyName, this.toObject());
-            if(!id)
+            if(!this.get(this.constructor.primaryKeyName))
             {
                 this.set(this.constructor.primaryKeyName, ActiveRecord.connection.getLastInsertedRowId());
             }
@@ -2479,7 +2499,7 @@ ActiveSupport.extend(ActiveRecord.InstanceMethods,{
         }
         else
         {
-            ActiveRecord.connection.updateEntity(this.tableName, this.constructor.primaryKeyName, this.get(this.constructor.primaryKeyName), this.toObject());
+            ActiveRecord.connection.updateEntity(this.tableName, this.constructor.primaryKeyName, this._id, this.toObject());
         }
         //apply field out conversions
         for (var key in this.constructor.fields)
@@ -2490,6 +2510,7 @@ ActiveSupport.extend(ActiveRecord.InstanceMethods,{
                 this.set(key,ActiveRecord.connection.fieldOut(this.constructor.fields[key],this.get(key)),true);
             }
         }
+        this._id = this.get(this.constructor.primaryKeyName);
         Synchronization.triggerSynchronizationNotifications(this,'afterSave');
         this.notify('afterSave');
         return this;
@@ -2501,7 +2522,7 @@ ActiveSupport.extend(ActiveRecord.InstanceMethods,{
      */
     destroy: function destroy()
     {
-        if (!this.get(this.constructor.primaryKeyName))
+        if (this._id === undefined)
         {
             return false;
         }
@@ -2509,7 +2530,7 @@ ActiveSupport.extend(ActiveRecord.InstanceMethods,{
         {
             return false;
         }
-        ActiveRecord.connection.deleteEntity(this.tableName,this.constructor.primaryKeyName,this.get(this.constructor.primaryKeyName));
+        ActiveRecord.connection.deleteEntity(this.tableName,this.constructor.primaryKeyName,this._id);
         Synchronization.triggerSynchronizationNotifications(this,'afterDestroy');
         if (this.notify('afterDestroy') === false)
         {
@@ -2704,7 +2725,7 @@ ActiveSupport.extend(ActiveRecord.ClassMethods,{
     {
         ++ActiveRecord.internalCounter;
         var record = new this(ActiveSupport.clone(data));
-        record.internalCount = parseInt(new Number(ActiveRecord.internalCounter), 10); //ensure number is a copy
+        record.internalCount = parseInt(Number(ActiveRecord.internalCounter),10); //ensure number is a copy
         return record;
     },
     /**
@@ -2773,37 +2794,6 @@ ActiveSupport.extend(ActiveRecord.ClassMethods,{
     updateAll: function updateAll(updates, conditions)
     {
         ActiveRecord.connection.updateMultitpleEntities(this.tableName, updates, conditions);
-    },
-    /**
-     * @alias ActiveRecord.Class.transaction
-     * @param {Function} proceed
-     *      The block of code to execute inside the transaction.
-     * @param {Function} [error]
-     *      Optional error handler that will be called with an exception if one is thrown during a transaction. If no error handler is passed the exception will be thrown.
-     * @example
-     *     Account.transaction(function(){
-     *         var from = Account.find(2);
-     *         var to = Account.find(3);
-     *         to.despoit(from.withdraw(100.00));
-     *     });
-     */
-    transaction: function transaction(proceed,error)
-    {
-        try
-        {
-            ActiveRecord.connection.transaction(proceed);
-        }
-        catch(e)
-        {
-            if(error)
-            {
-                error(e);
-            }
-            else
-            {
-                return ActiveSupport.throwError(e);
-            }
-        }
     },
     /**
      * Extends a vanilla array with ActiveRecord.ResultSet methods allowing for
@@ -3026,9 +3016,44 @@ ActiveRecord.escape = function escape(argument,supress_quotes)
     var quote = supress_quotes ? '' : '"';
     return typeof(argument) == 'number'
         ? argument
-        : quote + (new String(argument)).toString().replace(/\"/g,'\\"').replace(/\\/g,'\\\\').replace(/\0/g,'\\0') + quote
+        : quote + String(argument).replace(/\"/g,'\\"').replace(/\\/g,'\\\\').replace(/\0/g,'\\0') + quote
     ;
 };
+
+
+/**
+ * @alias ActiveRecord.transaction
+ * @param {Function} proceed
+ *      The block of code to execute inside the transaction.
+ * @param {Function} [error]
+ *      Optional error handler that will be called with an exception if one is thrown during a transaction. If no error handler is passed the exception will be thrown.
+ * @example
+ *     ActiveRecord.transaction(function(){
+ *         var from = Account.find(2);
+ *         var to = Account.find(3);
+ *         to.despoit(from.withdraw(100.00));
+ *     });
+ */
+ActiveRecord.transaction = function transaction(proceed,error)
+{
+    try
+    {
+        ActiveRecord.connection.transaction(proceed);
+    }
+    catch(e)
+    {
+        if(error)
+        {
+            error(e);
+        }
+        else
+        {
+            return ActiveSupport.throwError(e);
+        }
+    }
+};
+//deprecated
+ActiveRecord.ClassMethods.transaction = ActiveRecord.transaction;
 
 Adapters.defaultResultSetIterator = function defaultResultSetIterator(iterator)
 {
@@ -3289,11 +3314,11 @@ Adapters.SQL = {
                 }
                 else if(typeof(fragment[keys[i]]) == 'boolean')
                 {
-                    value = parseInt(new Number(fragment[keys[i]]));
+                    value = parseInt(Number(fragment[keys[i]]),10);
                 }
                 else
                 {
-                    value = new String(fragment[keys[i]]).toString();
+                    value = String(fragment[keys[i]]);
                 }
                 args.push(value);
             }
@@ -3343,15 +3368,15 @@ Adapters.SQL = {
         value = this.setValueFromFieldIfValueIsNull(field,value);
         if (typeof(field) === 'string')
         {
-            return (new String(value)).toString();
+            return String(value);
         }
         if (typeof(field) === 'number')
         {
-            return (new String(value)).toString();
+            return String(value);
         }
         if(typeof(field) === 'boolean')
         {
-            return (new String(parseInt(new Number(value), 10))).toString();
+            return String(parseInt(Number(value),10));
         }
         //array or object
         if (typeof(value) === 'object' && !Migrations.objectIsFieldDefinition(field))
@@ -3388,9 +3413,9 @@ Adapters.SQL = {
             if (typeof(value) === 'number')
             {
                 return value;
-            }
-            var t = ActiveSupport.trim(value);
-            return (t.length > 0 && !(/[^0-9.]/).test(t) && (/\.\d/).test(t)) ? parseFloat(new Number(value)) : parseInt(new Number(value), 10);
+            };
+            var t = ActiveSupport.trim(String(value));
+            return (t.length > 0 && !(/[^0-9.]/).test(t) && (/\.\d/).test(t)) ? parseFloat(Number(value)) : parseInt(Number(value),10);
         }
         //array or object (can come from DB (as string) or coding enviornment (object))
         if ((typeof(value) === 'string' || typeof(value) === 'object') && (typeof(field) === 'object' && (typeof(field.length) !== 'undefined' || typeof(field.type) === 'undefined')))
@@ -3587,7 +3612,7 @@ ActiveSupport.extend(Adapters.InMemory.prototype,{
         var response = [];
         for(var i = 0; i < ids.length; ++i)
         {
-            var id = parseInt(ids[i],10);
+            var id = ids[i];
             if(table_data[id])
             {
                 response.push(table_data[id]);
@@ -3621,9 +3646,9 @@ ActiveSupport.extend(Adapters.InMemory.prototype,{
         var table_data = this.storage[table];
         if(params && params.where && params.where.id)
         {
-            if(table_data[parseInt(params.where.id, 10)])
+            if(table_data[params.where.id])
             {
-                entity_array.push(table_data[parseInt(params.where.id, 10)]);
+                entity_array.push(table_data[params.where.id]);
             }
         }
         else
@@ -3771,7 +3796,7 @@ ActiveSupport.extend(Adapters.InMemory.prototype,{
                     var included = true;
                     for(var column_name in where)
                     {
-                        if((new String(result_set[i][column_name]).toString()) != (new String(where[column_name]).toString()))
+                        if((String(result_set[i][column_name])) != (String(where[column_name])))
                         {
                             included = false;
                             break;
@@ -4049,7 +4074,7 @@ var KeywordMap = {
 
 // Lexer token patterns
 var WHITESPACE_PATTERN = /^\s+/;
-var IDENTIFIER_PATTERN = /^[a-zA-Z][a-zA-Z]*/;
+var IDENTIFIER_PATTERN = /^[a-zA-Z\_][a-zA-Z\_]*/;
 var OPERATOR_PATTERN   = /^(?:&&|\|\||<=|<|=|!=|>=|>|,|\(|\))/i;
 var KEYWORD_PATTERN    = /^(true|or|in|false|and)\b/i;
 var STRING_PATTERN     = /^(?:'(\\.|[^'])*'|"(\\.|[^"])*")/;
@@ -4845,7 +4870,7 @@ ActiveRecord.ClassMethods.hasOne = function hasOne(related_model_name, options)
         var id = this.get(foreign_key);
         if (id)
         {
-            return ActiveRecord.Models[related_model_name].find(id);
+            return ActiveRecord.Models[related_model_name].get(id);
         }
         else
         {
@@ -5075,7 +5100,7 @@ ActiveRecord.ClassMethods.belongsTo = function belongsTo(related_model_name, opt
         var id = this.get(foreign_key);
         if (id)
         {
-            return ActiveRecord.Models[related_model_name].find(id);
+            return ActiveRecord.Models[related_model_name].get(id);
         }
         else
         {
@@ -5184,7 +5209,7 @@ var Migrations = {
         'mediumint': 0,
         'int': 0,
         'integer': 0,
-        'bitint': 0,
+        'bigint': 0,
         'float': 0,
         'double': 0,
         'double precision': 0,
@@ -5476,7 +5501,7 @@ ActiveSupport.extend(ActiveRecord.ClassMethods,{
         },options || {});
         //will run in scope of an ActiveRecord instance
         this.addValidator(function validates_length_of_callback(){
-            var value = new String(this.get(field));
+            var value = String(this.get(field));
             if (value.length < options.min)
             {
                 this.addError(options.message || (field + ' is too short.'));
@@ -5523,7 +5548,7 @@ ActiveSupport.extend(ActiveRecord.InstanceMethods,{
         {
             this.valid();
         }
-        ActiveRecord.connection.log('ActiveRecord.valid()? ' + (new String(this._errors.length === 0).toString()) + (this._errors.length > 0 ? '. Errors: ' + (new String(this._errors)).toString() : ''));
+        ActiveRecord.connection.log('ActiveRecord.valid()? ' + String(this._errors.length === 0) + (this._errors.length > 0 ? '. Errors: ' + String(this._errors) : ''));
         return this._errors.length === 0;
     },
     _getValidators: function _getValidators()
