@@ -154,7 +154,7 @@ Adapters.defaultResultSetIterator = function defaultResultSetIterator(iterator)
     {
         if (this.rows[iterator])
         {
-            return ActiveSupport.clone(this.rows[iterator]);
+            return this.rows[iterator];
         }
         else
         {
@@ -165,7 +165,7 @@ Adapters.defaultResultSetIterator = function defaultResultSetIterator(iterator)
     {
         for (var i = 0; i < this.rows.length; ++i)
         {
-            var row = ActiveSupport.clone(this.rows[i]);
+            var row = this.rows[i];
             iterator(row);
         }
     }
