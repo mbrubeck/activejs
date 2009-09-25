@@ -2794,7 +2794,7 @@ ActiveRecord = {
      * @alias ActiveRecord.autoMigrate
      * @property {Boolean}
      */
-     autoMigrate: true,
+    autoMigrate: true,
     /**
      * Tracks the number of records created.
      * @alias ActiveRecord.internalCounter
@@ -2882,11 +2882,16 @@ ActiveRecord = {
             var fields = this.constructor.fields;
             for(var key in fields)
             {
-                var field = fields[key]
+                var field = fields[key];
                 if(!field.primaryKey)
                 {
                     var value = ActiveRecord.connection.fieldOut(field,this.get(key));
-                    this.set(key,value,true);
+                    if(Migrations.objectIsFieldDefinition(value))
+                    {
+                        value = value.value;
+                    }
+                    //don't supress notifications on set since these are the processed values
+                    this.set(key,value);
                 }
             }
             this._id = this.get(this.constructor.primaryKeyName);
@@ -2901,19 +2906,19 @@ ActiveRecord = {
         ActiveSupport.extend(model.prototype, ActiveRecord.InstanceMethods);
 
         //user defined methods take precedence
-				if(typeof(methods) == 'undefined')
-				{
-						//detect if the fields object is actually a methods object
-					  for(var method_name in fields)
-					  {
-						    if(typeof(fields[method_name]) == 'function')
-						    {
-							      methods = fields;
-							      fields = null; 
-						    }
-						    break;
-					  }
-				}
+        if(typeof(methods) == 'undefined')
+        {
+            //detect if the fields object is actually a methods object
+            for(var method_name in fields)
+            {
+                if(typeof(fields[method_name]) == 'function')
+                {
+                    methods = fields;
+                    fields = null; 
+                }
+                break;
+            }
+        }
         if(methods && typeof(methods) !== 'function')
         {
             ActiveSupport.extend(model.prototype, methods);
@@ -3912,12 +3917,14 @@ Adapters.SQL = {
         var keys = ActiveSupport.keys(data).sort();
         var values = [];
         var args = [];
+        var quoted_keys = [];
         for(var i = 0; i < keys.length; ++i)
         {
             args.push(data[keys[i]]);
             values.push('?');
+            quoted_keys.push(this.quoteIdentifier(keys[i]));
         }
-        args.unshift("INSERT INTO " + table + " (" + keys.map(this.quoteIdentifier).join(',') + ") VALUES (" + values.join(',') + ")");
+        args.unshift("INSERT INTO " + table + " (" + quoted_keys.join(',') + ") VALUES (" + values.join(',') + ")");
         var response = this.executeSQL.apply(this,args);
         var id = data[primary_key_name] || this.getLastInsertedRowId();
         var data_with_id = ActiveSupport.clone(data);
@@ -4170,7 +4177,7 @@ Adapters.SQL = {
         {
             if (typeof(value) === 'number')
             {
-                return String(str).replace(/^\s+|\s+$/g,"");
+                return value;
             };
             var t = ActiveSupport.trim(String(value));
             return (t.length > 0 && !(/[^0-9.]/).test(t) && (/\.\d/).test(t)) ? parseFloat(Number(value)) : parseInt(Number(value),10);
@@ -6840,6 +6847,17 @@ var ActiveView = null;
  * The first construct, update(element).from(key) will set the content
  * of the specified element to the value of the specificed key
  * whenever the value of the key changes.
+ *
+ *     update(title_container).from('title');
+ * 
+ * You can update a particular attribute of an element by passing a key
+ * name to update(), or pull a particular key from another object by
+ * passing both an object and a key to from() (that object must however
+ * fire "get" and "set" events like ObservableHash, ActiveRecord or
+ * ActiveView).
+ * 
+ *     update(image_element,'src').from('image_src');
+ *     update(image_element,'src').from(image_active_record,'src');
  * 
  * The second construct is a generic way of observing when a key changes.
  * When "key" changes, the callback function will be called with the
@@ -6890,6 +6908,9 @@ var ActiveView = null;
  *     //instance.container == <ul><li>one</li><li>two</li><li>three</li></ul>
  *     items.pop();
  *     //instance.container == <ul><li>one</li><li>two</li></ul>
+ * 
+ * The collect() method will also accept a function that returns an Element
+ * in place of an ActiveView class.
  * 
  * ActiveRecord Data Binding Integration
  * -------------------------------------
