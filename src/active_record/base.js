@@ -417,7 +417,7 @@ ActiveSupport.extend(ActiveRecord.ClassMethods,{
     build: function build(data)
     {
         ++ActiveRecord.internalCounter;
-        var record = new this(ActiveSupport.clone(data));
+        var record = new this(data);
         record.internalCount = parseInt(Number(ActiveRecord.internalCounter),10); //ensure number is a copy
         return record;
     },
