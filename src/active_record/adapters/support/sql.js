@@ -88,7 +88,7 @@ Adapters.SQL = {
             {
                 return 0;
             }
-            return parseInt(ActiveRecord.connection.iterableFromResultSet(response).iterate(0)['calculation'], 10);
+            return parseInt(ActiveRecord.connection.iterableFromResultSet(response).first()['calculation'], 10);
         };
         var args = this.buildSQLArguments(table, params, operation);
         return process_count_query_result(this.executeSQL.apply(this, args));

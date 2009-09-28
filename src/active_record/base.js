@@ -336,9 +336,10 @@ ActiveSupport.extend(ActiveRecord.ClassMethods,{
                 //single id
                 result = ActiveRecord.connection.findEntitiesById(this.tableName,this.primaryKeyName,[params]);
             }
-            if (result && result.iterate && result.iterate(0))
+            var row;
+            if (result && (row = result.first()))
             {
-                return this.build(result.iterate(0));
+                return this.build(row);
             }
             else
             {
