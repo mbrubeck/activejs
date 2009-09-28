@@ -489,15 +489,9 @@ ActiveRecord = {
                 if(!field.primaryKey)
                 {
                     var value = ActiveRecord.connection.fieldOut(field,this.get(key));
-                    if(Migrations.objectIsFieldDefinition(value))
-                    {
-                        value = value.value;
-                    }
-                    //don't supress notifications on set since these are the processed values
-                    this.set(key,value);
+                    this.set(key,value,true);
                 }
             }
-            this._id = this.get(this.constructor.primaryKeyName);
             //performance optimization if no observers
             this.notify('afterInitialize', data);
         };
