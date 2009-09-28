@@ -181,7 +181,7 @@ Adapters.InstanceMethods = {
             //default value was in field specification
             if(Migrations.objectIsFieldDefinition(field))
             {
-                var default_value = this.getDefaultValueFromFieldDefinition(field);
+                var default_value = field.value;
                 if(typeof(default_value) === 'undefined')
                 {
                     return ActiveSupport.throwError(Errors.InvalidFieldType,(field ? (field.type || '[object]') : 'false'));
@@ -215,10 +215,6 @@ Adapters.InstanceMethods = {
             return 'TINYINT(1)';
         }
         return 'TEXT';
-    },
-    getDefaultValueFromFieldDefinition: function getDefaultValueFromFieldDefinition(field)
-    {
-        return field.value ? field.value : Migrations.fieldTypesWithDefaultValues[field.type ? field.type.replace(/\(.*/g,'').toLowerCase() : ''];
     },
     quoteIdentifier: function quoteIdentifier(name)
     {

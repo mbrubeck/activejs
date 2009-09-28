@@ -537,7 +537,7 @@ ActiveRecord = {
         {
             if(typeof(fields[field_name]) === 'object' && fields[field_name].type && !('value' in fields[field_name]))
             {
-                fields[field_name].value = null;
+                fields[field_name].value = Migrations.fieldTypesWithDefaultValues[field.type.replace(/\(.*/,'').toLowerCase()];
             }
             if(typeof(fields[field_name]) === 'object' && fields[field_name].primaryKey)
             {

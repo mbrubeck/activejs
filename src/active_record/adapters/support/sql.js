@@ -241,10 +241,7 @@ Adapters.SQL = {
         {
             return ActiveSupport.dateFormat(value,'yyyy-mm-dd HH:MM:ss');
         }
-        if(Migrations.objectIsFieldDefinition(field))
-        {
-            field = this.getDefaultValueFromFieldDefinition(field);
-        }
+        field = field.value || field;
         value = this.setValueFromFieldIfValueIsNull(field,value);
         if (typeof(field) === 'string')
         {
@@ -266,48 +263,25 @@ Adapters.SQL = {
     },
     fieldOut: function fieldOut(field, value)
     {
-        if(Migrations.objectIsFieldDefinition(field))
-        {
-            //date handling
-            if(typeof(value) == 'string' && /date/.test(field.type.toLowerCase()))
-            {
-                return ActiveSupport.dateFromDateTime(value);
-            }
-            field = this.getDefaultValueFromFieldDefinition(field);
-        }
+        field = field.value || field;
         value = this.setValueFromFieldIfValueIsNull(field,value);
-        if (typeof(field) === 'string')
-        {
+        switch (typeof(field)) {
+          case 'string':
             return value;
-        }
-        if(typeof(field) === 'boolean')
-        {
-            if(value === '0' || value === 0 || value === 'false')
+          case 'boolean':
+            if (value === '0' || value === 0 || value === 'false')
             {
                 value = false;
             }
             return !!value;
-        }
-        if (typeof(field) === 'number')
-        {
+          case 'number':
             if (typeof(value) === 'number')
             {
                 return value;
-            };
-            var t = ActiveSupport.trim(String(value));
-            return (t.length > 0 && !(/[^0-9.]/).test(t) && (/\.\d/).test(t)) ? parseFloat(Number(value)) : parseInt(Number(value),10);
-        }
-        //array or object (can come from DB (as string) or coding enviornment (object))
-        if ((typeof(value) === 'string' || typeof(value) === 'object') && (typeof(field) === 'object' && (typeof(field.length) !== 'undefined' || typeof(field.type) === 'undefined')))
-        {
-            if (typeof(value) === 'string')
-            {
-                return ActiveSupport.JSON.parse(value);
             }
-            else
-            {
-                return value;
-            }
+            return ((/^\d*\.\d+$/).test(value)) ? parseFloat(value) : parseInt(value,10);
+          default:
+            return value;
         }
     },
     transaction: function transaction(proceed)
